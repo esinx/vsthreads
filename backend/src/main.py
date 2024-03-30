@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append(r"./vendor")
+
 import json
 from typing import Annotated, List
 
