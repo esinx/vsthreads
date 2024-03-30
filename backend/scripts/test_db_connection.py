@@ -1,10 +1,9 @@
-from pymongo.mongo_client import MongoClient
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+from pymongo.mongo_client import MongoClient
+from settings.config import DB_SETTINGS
 
-uri = os.environ["MONGO_URI_DEV"]
+uri = DB_SETTINGS["uri"]
 
 # Create a new client and connect to the server
 client = MongoClient(uri)
