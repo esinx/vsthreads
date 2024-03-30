@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from pymongo.mongo_client import MongoClient
 
 from scripts.settings.config import DB_SETTINGS
-from src.models import ReactionModel, ThreadModel
+from src.models import ReactionModel, ThreadModel, ThreadPatchModel
 
 app = FastAPI(prefix="/api")
 
@@ -43,9 +43,12 @@ def make_new_thread(thread: ThreadModel):
 # We do latest since client would have full thread history anyways
 @app.post("/threads/{parent_id}")
 def append_thread(parent_id: str, thread: ThreadModel):
-    new_id = make_new_thread(thread)["_id"]
     parent_object_id = ObjectId(parent_id)
     parent = thread_collection.find_one({"_id": parent_object_id})
+    if thread is None or thread["is_archived"]:
+        return {"message": "Thread not found"}
+    thread["parent"] = parent_id
+    new_id = make_new_thread(thread)["_id"]
     print(type(parent["children"]))
     parent["children"].append(ObjectId(new_id))
     updated_thread = thread_collection.update_one({"_id": parent_object_id}, {"$set": parent})
@@ -80,19 +83,35 @@ def read_thread(thread_id):
 
 # Patch existing thread
 # Any arbitrary id
-@app.patch("/thread/{thread_id}")
-def patch_thread(thread_id: str, content: str):
+@app.patch("/threads/{thread_id}")
+def patch_thread(thread_id: str, content: ThreadPatchModel):
     object_id = ObjectId(thread_id)
+    obj = thread_collection.find_one({"_id": object_id})
+    if obj is None or obj["is_archived"]:
+        return {"message": "Thread not found"}
     updated_thread = thread_collection.update_one(
-        {"_id": object_id}, {"$set": {"content": content}}
+        {"_id": object_id}, {"$set": {"content": content.content}}
     )
     return {"_id": str(object_id)}
 
 
-@app.post("/thread/{thread_id}/reactions")
+@app.delete("/threads/{thread_id}")
+def delete_thread(thread_id: str):
+    object_id = ObjectId(thread_id)
+    obj = thread_collection.find_one({"_id": object_id})
+    if obj is None or obj["is_archived"]:
+        return {"message": "Thread not found"}
+    updated_thread = thread_collection.update_one(
+        {"_id": object_id}, {"$set": {"is_archived": True, "content": "[deleted]"}}
+    )
+
+
+@app.post("/threads/{thread_id}/reactions")
 def add_reaction(thread_id: str, reaction: ReactionModel):
     object_id = ObjectId(thread_id)
     thread = thread_collection.find_one({"_id": object_id})
+    if thread is None or thread["is_archived"]:
+        return {"message": "Thread not found"}
     if reaction.reaction not in thread["reactions"]:
         thread["reactions"][reaction.reaction] = []
     if reaction.user in thread["reactions"][reaction.reaction]:
@@ -102,10 +121,12 @@ def add_reaction(thread_id: str, reaction: ReactionModel):
     return {"_id": str(object_id)}
 
 
-@app.delete("/thread/{thread_id}/reactions")
+@app.delete("/threads/{thread_id}/reactions")
 def remove_reaction(thread_id: str, reaction: ReactionModel):
     object_id = ObjectId(thread_id)
     thread = thread_collection.find_one({"_id": object_id})
+    if thread is None or thread["is_archived"]:
+        return {"message": "Thread not found"}
     if reaction.reaction not in thread["reactions"]:
         return {"message": "Reaction does not exist"}
     if reaction.user not in thread["reactions"][reaction.reaction]:
