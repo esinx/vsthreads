@@ -1,4 +1,4 @@
-.env*
+backend/.env
 .DS_Store
 *.pyc
 __pycache__/
@@ -11,3 +11,6 @@ yarn-error.log*
 ./Pipfile.lock
 ./package.json
 ./yarn.lock
+
+.idea
+.python-version
