@@ -22,7 +22,7 @@ export const getEmojiCodes = () => {
 export const getEmojiImageURL = (code: string) =>
 	`https://emojiapi.dev/api/v1/${code}/64.png`
 
-export const searchEmojiCode = async (query: string) => {
+export const searchEmojiCode = (query: string) => {
 	const emojiCodes = getEmojiCodes()
 	const lowerQuery = query.toLowerCase()
 	return Object.entries(emojiCodes).find(([key, value]) =>

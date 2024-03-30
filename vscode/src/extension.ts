@@ -2,9 +2,10 @@ import * as vscode from "vscode"
 import { parseComments } from "./parser"
 import { State } from "./state"
 import { getAuthSession } from "./auth"
-import { randomUUID } from "crypto"
 import { loadLanguageConfig } from "./language-config"
-import { loadEmojiCodes } from "./emoji"
+import { getEmojiImageURL, loadEmojiCodes, searchEmojiCode } from "./emoji"
+import { createAPIClient } from "./api"
+import { getOrigin } from "./git"
 
 let state: State = {
 	threads: {},
@@ -15,6 +16,7 @@ namespace vsthread {
 	export type Thread = {
 		id: string
 		parent: vscode.CommentThread
+		root?: boolean
 	} & vscode.Comment
 }
 
@@ -33,9 +35,11 @@ const getLanguageConfig = (() => {
 
 const authenticate = async () => {
 	const session = await getAuthSession()
+	const apiClient = createAPIClient({ accessToken: session.accessToken })
 	state = {
 		...state,
 		authentication: session,
+		apiClient,
 	}
 }
 
@@ -50,18 +54,19 @@ export function activate(context: vscode.ExtensionContext) {
 	commentController.options = {
 		prompt: "🧵 Leave a reply on this thread",
 	}
-
 	context.subscriptions.push(commentController)
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			"vsthreads.createThread",
 			async (reply: vscode.CommentReply) => {
-				console.log(`[DEBUG]: ${state.authentication}`)
-				if (!state.activeEditor) {
+				if (!state.activeEditor || !state.apiClient) {
 					return
 				}
-				console.log(`[createThread]`, reply)
-				const threadId = randomUUID()
+				const origin = await getOrigin(state.activeEditor.document.uri.fsPath)
+				const { _id: threadId } = await state.apiClient.createThread({
+					repo: state.activeEditor.document.uri.toString(),
+					content: origin,
+				})
 				const languageConfig = await getLanguageConfig(
 					state.activeEditor.document.languageId
 				)
@@ -96,8 +101,23 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			"vsthreads.replyThread",
-			(reply: vscode.CommentReply) => {
-				console.log(`[replyThread]`, reply)
+			async (reply: vscode.CommentReply) => {
+				if (!state.apiClient) {
+					return
+				}
+				const rootThread = (reply.thread.comments as vsthread.Thread[]).find(
+					(comment) => comment.root
+				)
+				if (!rootThread) {
+					return
+				}
+				await state.apiClient.createThread(
+					{
+						content: reply.text,
+					},
+					rootThread.id
+				)
+				reply.thread.dispose()
 			}
 		)
 	)
@@ -197,20 +217,29 @@ export function activate(context: vscode.ExtensionContext) {
 						mode: vscode.CommentMode.Preview,
 						contextValue: "by-user",
 						label: "comment",
-						reactions: [],
+						reactions: [
+							{
+								label: "upvote",
+								count: 1,
+								authorHasReacted: false,
+								iconPath: vscode.Uri.parse(
+									getEmojiImageURL(searchEmojiCode("red_triangle_pointed_up")!)
+								),
+							},
+							{
+								label: "downvote",
+								count: 1,
+								authorHasReacted: false,
+								iconPath: vscode.Uri.parse(
+									getEmojiImageURL(
+										searchEmojiCode("red_triangle_pointed_down")!
+									)
+								),
+							},
+						],
 						timestamp: new Date(),
 						parent: thread,
-					},
-					{
-						id: `${threadId}-2`,
-						author: { name: "vscode" },
-						body: new vscode.MarkdownString(comment.content),
-						mode: vscode.CommentMode.Preview,
-						contextValue: "none",
-						label: "comment-2",
-						reactions: [],
-						timestamp: new Date(),
-						parent: thread,
+						root: true,
 					},
 				]
 				thread.comments = comments

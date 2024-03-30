@@ -96,5 +96,8 @@
 		"@vscode/test-electron": "^2.3.9",
 		"eslint": "^8.57.0",
 		"typescript": "^5.3.3"
+	},
+	"dependencies": {
+		"cross-fetch": "^4.0.0"
 	}
 }
