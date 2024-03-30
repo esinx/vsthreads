@@ -10,7 +10,7 @@ PyObjectId = Annotated[str, BeforeValidator(str)]
 class ThreadModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
     repo: str = Field(...)
-    author: str = Field(...)
+    author: str = Field(default=None)
     email: EmailStr = Field(default=None)
     profile_picture: str = Field(default=None)
     content: str = Field(...)
@@ -26,4 +26,3 @@ class ThreadPatchModel(BaseModel):
 
 class ReactionModel(BaseModel):
     reaction: str = Field(max_length=1, min_length=1)
-    user: str = Field(...)
