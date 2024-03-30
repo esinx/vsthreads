@@ -16,6 +16,12 @@ class ThreadModel(BaseModel):
     content: str = Field(...)
     reactions: Dict[str, list[str]] = Field(default_factory=dict)
     children: List[PyObjectId] = []
+    parent: Optional[PyObjectId] = Field(default=None)
+    is_archived: bool = Field(default=False)
+
+
+class ThreadPatchModel(BaseModel):
+    content: str = Field(...)
 
 
 class ReactionModel(BaseModel):
