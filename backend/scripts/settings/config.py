@@ -4,4 +4,4 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_SETTINGS = {"uri": os.getenv("MONGO_URI_DEV")}
+DB_SETTINGS = {"uri": os.getenv("MONGO_URI")}
