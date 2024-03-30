@@ -8,7 +8,7 @@ fastapi = "*"
 uvicorn = "*"
 pymongo = {extras = ["srv"], version = "==3.11"}
 python-dotenv = "*"
-
+mangum = "*"
 
 [dev-packages]
 black = "*"
