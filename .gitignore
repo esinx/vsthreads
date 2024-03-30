@@ -11,3 +11,5 @@ yarn-error.log*
 ./Pipfile.lock
 ./package.json
 ./yarn.lock
+
+.idea
