@@ -20,6 +20,10 @@ class ThreadModel(BaseModel):
     is_archived: bool = Field(default=False)
 
 
+class SubThreadModel(ThreadModel):
+    repo: str = Field(default=None)
+
+
 class ThreadPatchModel(BaseModel):
     content: str = Field(...)
 

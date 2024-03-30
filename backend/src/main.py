@@ -8,7 +8,7 @@ from pymongo.mongo_client import MongoClient
 
 from scripts.settings.config import DB_SETTINGS
 from src.auth import get_current_user
-from src.models import ReactionModel, ThreadModel, ThreadPatchModel
+from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchModel
 
 app = FastAPI(prefix="/api")
 
@@ -53,13 +53,14 @@ def make_new_thread(thread: ThreadModel, token: Annotated[str, Depends(oauth2_sc
 # We do latest since client would have full thread history anyways
 @app.post("/threads/{parent_id}")
 def append_thread(
-    parent_id: str, thread: ThreadModel, token: Annotated[str, Depends(oauth2_scheme)]
+    parent_id: str, thread: SubThreadModel, token: Annotated[str, Depends(oauth2_scheme)]
 ):
     parent_object_id = ObjectId(parent_id)
     parent = thread_collection.find_one({"_id": parent_object_id})
     if thread is None or thread.is_archived:
         return {"message": "Thread not found"}
     thread.parent = parent_id
+    thread.repo = parent["repo"]
     new_thread = make_new_thread(thread, token)
     if "_id" not in new_thread:
         return new_thread
