@@ -1,0 +1,13 @@
+.env*
+.DS_Store
+*.pyc
+__pycache__/
+.coverage
+.log
+node_modules/
+yarn-debug.log*
+yarn-error.log*
+./Pipfile
+./Pipfile.lock
+./package.json
+./yarn.lock
