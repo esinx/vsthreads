@@ -19,13 +19,61 @@
 				"command": "vsthreads.createThread",
 				"title": "Create Thread",
 				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "vsthreads.replyThread",
+				"title": "Reply Thread",
+				"enablement": "!commentIsEmpty"
+			},
+			{
+				"command": "vsthreads.editThread",
+				"title": "Edit Thread"
+			},
+			{
+				"command": "vsthreads.deleteThread",
+				"title": "Delete Thread"
+			},
+			{
+				"command": "vsthreads.saveThread",
+				"title": "Save Thread"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
 					"command": "vsthreads.createThread",
-					"when": "true"
+					"when": "false"
+				}
+			],
+			"comments/commentThread/context": [
+				{
+					"command": "vsthreads.createThread",
+					"group": "inline",
+					"when": "commentController == vsthreads && commentThreadIsEmpty"
+				},
+				{
+					"command": "vsthreads.replyThread",
+					"group": "inline",
+					"when": "commentController == vsthreads && !commentThreadIsEmpty"
+				}
+			],
+			"comments/comment/title": [
+				{
+					"command": "vsthreads.editThread",
+					"group": "group@1",
+					"when": "commentController == vsthreads && comment == by-user"
+				},
+				{
+					"command": "vsthreads.deleteThread",
+					"group": "group@2",
+					"when": "commentController == vsthreads && comment == by-user"
+				}
+			],
+			"comments/comment/context": [
+				{
+					"command": "vsthreads.saveThread",
+					"group": "inline@2",
+					"when": "commentController == vsthreads"
 				}
 			]
 		}
@@ -39,14 +87,14 @@
 		"test": "vscode-test"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.87.0",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "18.x",
+		"@types/vscode": "^1.87.0",
 		"@typescript-eslint/eslint-plugin": "^7.4.0",
 		"@typescript-eslint/parser": "^7.4.0",
-		"eslint": "^8.57.0",
-		"typescript": "^5.3.3",
 		"@vscode/test-cli": "^0.0.8",
-		"@vscode/test-electron": "^2.3.9"
+		"@vscode/test-electron": "^2.3.9",
+		"eslint": "^8.57.0",
+		"typescript": "^5.3.3"
 	}
 }
