@@ -9,12 +9,15 @@ from bson import ObjectId, json_util
 from fastapi import Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer
 from pymongo.mongo_client import MongoClient
+from mangum import Mangum
 
 from scripts.settings.config import DB_SETTINGS
 from src.auth import get_current_user
 from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchModel
 
 app = FastAPI(prefix="/api")
+
+handler = Mangum(app)
 
 client = MongoClient(DB_SETTINGS["uri"])
 db = client.get_database("vsthreads")
