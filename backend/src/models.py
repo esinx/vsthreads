@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.functional_validators import BeforeValidator
@@ -14,6 +14,10 @@ class ThreadModel(BaseModel):
     email: EmailStr = Field(default=None)
     profile_picture: str = Field(default=None)
     content: str = Field(...)
-    upvotes: int = Field(default=0)
-    downvotes: int = Field(default=0)
+    reactions: Dict[str, list[str]] = Field(default_factory=dict)
     children: List[PyObjectId] = []
+
+
+class ReactionModel(BaseModel):
+    reaction: str = Field(max_length=1, min_length=1)
+    user: str = Field(...)

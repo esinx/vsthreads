@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from pymongo.mongo_client import MongoClient
 
 from scripts.settings.config import DB_SETTINGS
-from src.models import ThreadModel
+from src.models import ReactionModel, ThreadModel
 
 app = FastAPI(prefix="/api")
 
@@ -66,7 +66,7 @@ def read_thread(thread_id):
                     "startWith": "$children",
                     "connectFromField": "children",
                     "connectToField": "_id",
-                    "as": "parents",
+                    "as": "subthreads",
                     "depthField": "depth",
                 }
             },
@@ -74,14 +74,44 @@ def read_thread(thread_id):
     )
     if threads is None:
         return {"message": "Thread not found"}
-    for thread in threads:
-        print(thread)
-        # print(thread["parents"])
-    return json_util.loads(json_util.dumps(threads))
+    print(type(threads))
+    return json.loads(json_util.dumps(threads))
 
 
 # Patch existing thread
 # Any arbitrary id
-@app.patch("/thread/{repo}/{thread_id}")
-def patch_thread(thread_id: str, thread: ThreadModel):
-    return
+@app.patch("/thread/{thread_id}")
+def patch_thread(thread_id: str, content: str):
+    object_id = ObjectId(thread_id)
+    updated_thread = thread_collection.update_one(
+        {"_id": object_id}, {"$set": {"content": content}}
+    )
+    return {"_id": str(object_id)}
+
+
+@app.post("/thread/{thread_id}/reactions")
+def add_reaction(thread_id: str, reaction: ReactionModel):
+    object_id = ObjectId(thread_id)
+    thread = thread_collection.find_one({"_id": object_id})
+    if reaction.reaction not in thread["reactions"]:
+        thread["reactions"][reaction.reaction] = []
+    if reaction.user in thread["reactions"][reaction.reaction]:
+        return {"message": "Reaction already exists"}
+    thread["reactions"][reaction.reaction].append(reaction.user)
+    updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
+    return {"_id": str(object_id)}
+
+
+@app.delete("/thread/{thread_id}/reactions")
+def remove_reaction(thread_id: str, reaction: ReactionModel):
+    object_id = ObjectId(thread_id)
+    thread = thread_collection.find_one({"_id": object_id})
+    if reaction.reaction not in thread["reactions"]:
+        return {"message": "Reaction does not exist"}
+    if reaction.user not in thread["reactions"][reaction.reaction]:
+        return {"message": "Reaction does not exist"}
+    thread["reactions"][reaction.reaction].remove(reaction.user)
+    if len(thread["reactions"][reaction.reaction]) == 0:
+        del thread["reactions"][reaction.reaction]
+    updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
+    return {"_id": str(object_id)}
