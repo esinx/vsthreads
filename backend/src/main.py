@@ -5,6 +5,7 @@ sys.path.append(r"./vendor")
 import json
 from typing import Annotated, List
 
+from openai import OpenAI
 from bson import ObjectId, json_util
 from fastapi import Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer
@@ -232,6 +233,14 @@ def remove_reaction(
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
 
+client = OpenAI()
+
+@app.post("/generate")
+def generate(prompt: str):
+    return client.chat.completions.create(
+        model="gpt-4-turbo-preview",
+        messages=[{"role": "user", "content": prompt}]
+    )
 
 # @thread:6608f3de036f5763a48d0731
 
