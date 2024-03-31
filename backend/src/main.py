@@ -204,7 +204,6 @@ def add_reaction(
 
 # @thread:6608efeb90755c0cfc80dc56
 
-
 @app.delete("/threads/{thread_id}/reactions")
 def remove_reaction(
     thread_id: str, reaction: ReactionModel, token: Annotated[str, Depends(oauth2_scheme)]
