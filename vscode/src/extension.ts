@@ -222,6 +222,97 @@ export function activate(context: vscode.ExtensionContext) {
 		)
 	)
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			"vsthreads.generate",
+			async (reply: vsthread.Thread) => {
+				if (!state.apiClient) {
+					return
+				}
+				var commentsString: string[] = []
+				reply.parent.comments.forEach((comment) => {
+					if (typeof comment.body === "string") {
+						commentsString.push(comment.body)
+					} else if (comment.body instanceof vscode.MarkdownString) {
+						commentsString.push(comment.body.value)
+					}
+				})
+				// Add line numbers to document.getText() (based on \n)
+				var originalText = state.activeEditor?.document.getText()
+				if (originalText === undefined) {
+					return
+				}
+				var lines = originalText?.split("\n")
+				var newLines = []
+
+				for (var i = 0; i < lines.length; i++) {
+					newLines.push(`${i + 1}: ${lines[i]}`)
+				}
+
+				var prompt = 
+					`You are a helpful and smart code assistant. You will be given a section of code to replace with functional, best-practice code based on the comments provided in a thread, as well as the surrounding code.
+
+					---
+
+					Comments:
+
+					${commentsString.join("\n")}
+
+					---
+
+					Code:
+
+					${newLines.join("\n")}
+
+					---
+
+					Replace the code around the following line:
+
+					${reply.parent.range.start.line + 1}
+
+					---
+
+					Please return just a JSON with the following format (do not include line numbers in the code, do not add json formatting around the JSON object. Please escape double quotes in the code with a backslash (e.g. \") but make new lines "\r\n"):
+
+					{
+						"start_line": 1,
+						"end_line": 10,
+						"code": "your \"code\" here"
+					}
+					`
+				console.log(prompt)
+				const resultAll = await state.apiClient.generate(prompt)
+				var resultJSON = resultAll.choices[0].message.content
+				// cast to string and remove code block formatting
+				resultJSON = resultJSON.replace("```", "").replace("json", "").trim()
+				console.log(resultJSON)
+				const result = await JSON.parse(resultJSON)
+				console.log(result)
+				if (result === undefined || result === null || result.code === undefined || result.start_line === undefined || result.end_line === undefined) {
+					console.log("Failed to generate code")
+					return vscode.window.showErrorMessage("Failed to generate code")
+				}
+
+				// Replace the code in the editor
+				const startLine = result.start_line
+				const endLine = result.end_line
+				const code = result.code
+				// Replace the code in the editor
+				state.activeEditor?.edit((editBuilder) => {
+					editBuilder.replace(
+						new vscode.Range(
+							new vscode.Position(startLine-1, 0),
+							new vscode.Position(endLine-1, 1000)
+						),	
+						code
+					)
+				})
+
+				renderComments()
+			}
+		)
+	)
+
 	commentController.commentingRangeProvider = {
 		// exclude comments from commenting ranges
 		provideCommentingRanges: async (document, token) => {
@@ -316,8 +407,8 @@ export function activate(context: vscode.ExtensionContext) {
 								count: thread.reactions[label]?.length || 0,
 								authorHasReacted: state.authentication?.account.label
 									? thread.reactions[label]?.includes(
-											state.authentication.account.label
-									  )
+										state.authentication.account.label
+									)
 									: false,
 								iconPath: vscode.Uri.parse(
 									getEmojiImageURL(searchEmojiCode(emoji)!)
@@ -344,9 +435,9 @@ export function activate(context: vscode.ExtensionContext) {
 							parent: createdThread,
 							reactions: REACTIONS.map(([label, emoji]) => ({
 								label,
-								count: thread.reactions[label]?.length || 0,
+								count: subthread.reactions[label]?.length || 0,
 								authorHasReacted: state.authentication?.account.label
-									? thread.reactions[label]?.includes(
+									? subthread.reactions[label]?.includes(
 											state.authentication.account.label
 									  )
 									: false,

@@ -122,6 +122,21 @@ export const createAPIClient = (args: { accessToken: string }) => {
 			}
 			return response.json()
 		},
+		generate: async (input: string) => {
+			const response = await fetch(`${API_ROOT}/generate`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${accessToken}`,
+				},
+				body: JSON.stringify({ input }),
+			})
+			if (!response.ok) {
+				console.error(response)
+				throw new Error("Failed to generate")
+			}
+			return response.json()
+		},
 		updateToken: (token: string) => {
 			accessToken = token
 		},
