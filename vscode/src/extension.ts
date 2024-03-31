@@ -3,12 +3,7 @@ import { parseComments } from "./parser"
 import { State } from "./state"
 import { getAuthSession } from "./auth"
 import { loadLanguageConfig } from "./language-config"
-import {
-	getEmojiCodes,
-	getEmojiImageURL,
-	loadEmojiCodes,
-	searchEmojiCode,
-} from "./emoji"
+import { getEmojiImageURL, loadEmojiCodes, searchEmojiCode } from "./emoji"
 import { createAPIClient } from "./api"
 import { getOrigin } from "./git"
 import path from "node:path"
