@@ -233,6 +233,8 @@ def remove_reaction(
     return {"_id": str(object_id)}
 
 
+# @thread:6608f3de036f5763a48d0731
+
 handler = Mangum(
     app,
     lifespan="auto",
