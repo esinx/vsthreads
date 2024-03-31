@@ -1,16 +1,21 @@
 {
 	"name": "vsthreads",
 	"displayName": "vsthreads",
-	"description": "Theads but VSCode",
-	"version": "0.0.1",
+	"description": "Threads but VSCode",
+	"version": "0.0.2",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/esinx/vsthreads"
+	},
 	"engines": {
 		"vscode": "^1.87.0"
 	},
+	"publisher": "esinx",
 	"categories": [
 		"Other"
 	],
 	"activationEvents": [
-		"*"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -24,10 +29,6 @@
 				"command": "vsthreads.replyThread",
 				"title": "Reply Thread",
 				"enablement": "!commentIsEmpty"
-			},
-			{
-				"command": "vsthreads.editThread",
-				"title": "Edit Thread"
 			},
 			{
 				"command": "vsthreads.deleteThread",
@@ -59,21 +60,9 @@
 			],
 			"comments/comment/title": [
 				{
-					"command": "vsthreads.editThread",
-					"group": "group@1",
-					"when": "commentController == vsthreads && comment == by-user"
-				},
-				{
 					"command": "vsthreads.deleteThread",
 					"group": "group@2",
 					"when": "commentController == vsthreads && comment == by-user"
-				}
-			],
-			"comments/comment/context": [
-				{
-					"command": "vsthreads.saveThread",
-					"group": "inline@2",
-					"when": "commentController == vsthreads"
 				}
 			]
 		}
@@ -96,5 +85,8 @@
 		"@vscode/test-electron": "^2.3.9",
 		"eslint": "^8.57.0",
 		"typescript": "^5.3.3"
+	},
+	"dependencies": {
+		"cross-fetch": "^4.0.0"
 	}
 }
