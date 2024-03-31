@@ -17,7 +17,6 @@ from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchMo
 
 app = FastAPI(prefix="/api")
 
-handler = Mangum(app)
 
 client = MongoClient(DB_SETTINGS["uri"])
 db = client.get_database("vsthreads")
@@ -193,3 +192,8 @@ def remove_reaction(
         del thread["reactions"][reaction.reaction]
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
+
+handler = Mangum(app, 
+    lifespan="auto",
+    api_gateway_base_path="/",   
+)
