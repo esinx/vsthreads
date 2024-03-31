@@ -1,3 +1,7 @@
+import sys
+
+sys.path.append(r"./vendor")
+
 import json
 from typing import Annotated, List
 
@@ -5,12 +9,14 @@ from bson import ObjectId, json_util
 from fastapi import Depends, FastAPI
 from fastapi.security import OAuth2PasswordBearer
 from pymongo.mongo_client import MongoClient
+from mangum import Mangum
 
 from scripts.settings.config import DB_SETTINGS
 from src.auth import get_current_user
 from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchModel
 
 app = FastAPI(prefix="/api")
+
 
 client = MongoClient(DB_SETTINGS["uri"])
 db = client.get_database("vsthreads")
@@ -222,3 +228,8 @@ def remove_reaction(
         del thread["reactions"][reaction.reaction]
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
+
+handler = Mangum(app, 
+    lifespan="auto",
+    api_gateway_base_path="/",   
+)

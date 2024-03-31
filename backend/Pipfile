@@ -11,7 +11,7 @@ python-dotenv = "*"
 pydantic = "*"
 email-validator = "==2.0.0"
 httpx = "*"
-
+mangum = "*"
 
 [dev-packages]
 black = "*"
