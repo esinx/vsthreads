@@ -1,6 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 
+// @thread:660971f9024b900df1c439e8
 let emojiCodes: Record<string, string>
 
 export const loadEmojiCodes = async () => {
@@ -21,6 +22,7 @@ export const getEmojiCodes = () => {
 	return emojiCodes
 }
 
+// @thread:66096d529831ef3bd5a2468b
 export const getEmojiImageURL = (code: string) =>
 	`https://emojiapi.dev/api/v1/${code}/64.png`
 
