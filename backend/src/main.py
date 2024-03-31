@@ -49,7 +49,6 @@ def make_new_thread(thread: ThreadModel, token: Annotated[str, Depends(oauth2_sc
     thread.author = author
     thread.email = email
     thread.profile_picture = profile_picture
-
     new_thread = thread_collection.insert_one(thread.model_dump())
     return {"_id": str(new_thread.inserted_id)}
 
@@ -229,7 +228,9 @@ def remove_reaction(
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
 
-handler = Mangum(app, 
+
+handler = Mangum(
+    app,
     lifespan="auto",
-    api_gateway_base_path="/",   
+    api_gateway_base_path="/",
 )

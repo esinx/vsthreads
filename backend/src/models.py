@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from datetime import datetime
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
 
@@ -18,6 +19,7 @@ class ThreadModel(BaseModel):
     children: List[PyObjectId] = []
     parent: Optional[PyObjectId] = Field(default=None)
     is_archived: bool = Field(default=False)
+    created_at: float = Field(default_factory=datetime.now().timestamp)
 
 
 class SubThreadModel(ThreadModel):
