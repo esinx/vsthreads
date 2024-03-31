@@ -230,16 +230,16 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			"vsthreads.generate",
-			(reply: vsthread.Thread) => {
+			async (reply: vsthread.Thread) => {
 				if (!state.apiClient) {
 					return
 				}
-				var commentsString = ""
+				var commentsString: string[] = []
 				reply.parent.comments.forEach((comment) => {
 					if (typeof comment.body === "string") {
-						commentsString += comment.body
+						commentsString.push(comment.body)
 					} else if (comment.body instanceof vscode.MarkdownString) {
-						commentsString += comment.body.value
+						commentsString.push(comment.body.value)
 					}
 				})
 				// Add line numbers to document.getText() (based on \n)
@@ -257,27 +257,61 @@ export function activate(context: vscode.ExtensionContext) {
 				var prompt = 
 					`You are a helpful and smart code assistant. You will be given a section of code to replace with functional, best-practice code based on the comments provided in a thread, as well as the surrounding code.
 
+					---
+
 					Comments:
 
-					${commentsString}
+					${commentsString.join("\n")}
+
+					---
 
 					Code:
 
 					${newLines.join("\n")}
 
+					---
+
 					Replace the code around the following line:
 
 					${reply.parent.range.start.line + 1}
 
-					Please return a JSON with the following format:
+					---
+
+					Please return just a JSON with the following format (do not include line numbers in the code, do not add json formatting around the JSON object. Please escape double quotes in the code with a backslash (e.g. \") but make new lines "\r\n"):
 
 					{
 						"start_line": 1,
 						"end_line": 10,
-						"code": "your code here"
+						"code": "your \"code\" here"
 					}
 					`
 				console.log(prompt)
+				const resultAll = await state.apiClient.generate(prompt)
+				var resultJSON = resultAll.choices[0].message.content
+				// cast to string and remove code block formatting
+				resultJSON = resultJSON.replace("```", "").replace("json", "").trim()
+				console.log(resultJSON)
+				const result = await JSON.parse(resultJSON)
+				console.log(result)
+				if (result === undefined || result === null || result.code === undefined || result.start_line === undefined || result.end_line === undefined) {
+					console.log("Failed to generate code")
+					return vscode.window.showErrorMessage("Failed to generate code")
+				}
+
+				// Replace the code in the editor
+				const startLine = result.start_line
+				const endLine = result.end_line
+				const code = result.code
+				// Replace the code in the editor
+				state.activeEditor?.edit((editBuilder) => {
+					editBuilder.replace(
+						new vscode.Range(
+							new vscode.Position(startLine-1, 0),
+							new vscode.Position(endLine-1, 1000)
+						),	
+						code
+					)
+				})
 
 				renderComments()
 			}
