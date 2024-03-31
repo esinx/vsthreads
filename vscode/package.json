@@ -3,6 +3,10 @@
 	"displayName": "vsthreads",
 	"description": "Threads but VSCode",
 	"version": "0.0.2",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/esinx/vsthreads"
+	},
 	"engines": {
 		"vscode": "^1.87.0"
 	},
