@@ -104,6 +104,7 @@ def read_thread(thread_id):
                     "connectToField": "_id",
                     "as": "subthreads",
                     "depthField": "depth",
+                    "maxDepth": 100,
                 }
             },
         ]
