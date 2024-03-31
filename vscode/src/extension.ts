@@ -3,15 +3,19 @@ import { parseComments } from "./parser"
 import { State } from "./state"
 import { getAuthSession } from "./auth"
 import { loadLanguageConfig } from "./language-config"
-import {
-	getEmojiCodes,
-	getEmojiImageURL,
-	loadEmojiCodes,
-	searchEmojiCode,
-} from "./emoji"
+import { getEmojiImageURL, loadEmojiCodes, searchEmojiCode } from "./emoji"
 import { createAPIClient } from "./api"
 import { getOrigin } from "./git"
 import path from "node:path"
+
+const REACTIONS = [
+	["heart", "red_heart"],
+	["bad", "pile_of_poo"],
+	["laugh", "laughing"],
+	["confused", "confused"],
+	["rocket", "rocket"],
+	["eyes", "eyes"],
+]
 
 let state: State = {
 	threads: {},
@@ -66,28 +70,39 @@ export function activate(context: vscode.ExtensionContext) {
 		prompt: "🧵 Leave a reply on this thread",
 	}
 	commentController.reactionHandler = async (element, reaction) => {
-		console.log(reaction)
 		const e = element as vsthread.Thread
 		if (!state.apiClient) {
 			return
 		}
 		const threadId = e.id
-		await state.apiClient.addReaction(threadId, reaction.label)
+		if (
+			element.reactions?.find((r) => r.label === reaction.label)
+				?.authorHasReacted
+		) {
+			console.log("remove reaction", reaction.label)
+			await state.apiClient.removeReaction(threadId, reaction.label)
+		} else {
+			console.log("add reaction", reaction.label)
+			await state.apiClient.addReaction(threadId, reaction.label)
+		}
+
 		if (element.reactions) {
 			element.reactions = element.reactions.map((r) => {
 				if (r.label === reaction.label) {
 					return {
 						...r,
-						count: r.count + 1,
-						authorHasReacted: true,
+						count: r.authorHasReacted ? r.count - 1 : r.count + 1,
+						authorHasReacted: !r.authorHasReacted,
 					}
 				}
 				return r
 			})
 		}
+
 		Object.entries(state.threads).forEach(([, thread]) => {
 			thread.dispose()
 		})
+
 		state.threads = {}
 		renderComments()
 	}
@@ -296,20 +311,18 @@ export function activate(context: vscode.ExtensionContext) {
 									? "by-user"
 									: "by-others",
 							label: "comment",
-							reactions: [
-								{
-									label: "heart",
-									count: thread.reactions["red_heart"]?.length || 1,
-									authorHasReacted: state.authentication?.account.label
-										? thread.reactions["red_heart"]?.includes(
-												state.authentication.account.label
-										  )
-										: false,
-									iconPath: vscode.Uri.parse(
-										getEmojiImageURL(searchEmojiCode("red_heart")!)
-									),
-								},
-							],
+							reactions: REACTIONS.map(([label, emoji]) => ({
+								label,
+								count: thread.reactions[label]?.length || 0,
+								authorHasReacted: state.authentication?.account.label
+									? thread.reactions[label]?.includes(
+											state.authentication.account.label
+									  )
+									: false,
+								iconPath: vscode.Uri.parse(
+									getEmojiImageURL(searchEmojiCode(emoji)!)
+								),
+							})),
 							timestamp: new Date(thread.created_at * 1000),
 							parent: createdThread,
 							root: true,
@@ -329,20 +342,18 @@ export function activate(context: vscode.ExtensionContext) {
 									: "by-others",
 							label: "comment",
 							parent: createdThread,
-							reactions: [
-								{
-									label: "heart",
-									count: thread.reactions["red_heart"]?.length || 1,
-									authorHasReacted: state.authentication?.account.label
-										? thread.reactions["red_heart"]?.includes(
-												state.authentication.account.label
-										  )
-										: false,
-									iconPath: vscode.Uri.parse(
-										getEmojiImageURL(searchEmojiCode("red_heart")!)
-									),
-								},
-							],
+							reactions: REACTIONS.map(([label, emoji]) => ({
+								label,
+								count: thread.reactions[label]?.length || 0,
+								authorHasReacted: state.authentication?.account.label
+									? thread.reactions[label]?.includes(
+											state.authentication.account.label
+									  )
+									: false,
+								iconPath: vscode.Uri.parse(
+									getEmojiImageURL(searchEmojiCode(emoji)!)
+								),
+							})),
 						})) ?? []),
 					].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 

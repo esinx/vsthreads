@@ -99,6 +99,7 @@ export const createAPIClient = (args: { accessToken: string }) => {
 				}
 			)
 			if (!response.ok) {
+				console.log(await response.json())
 				throw new Error("Failed to add reaction")
 			}
 			return response.json()
