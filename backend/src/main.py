@@ -236,14 +236,16 @@ def remove_reaction(
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
 
+
 client = OpenAI()
+
 
 @app.post("/generate")
 def generate(prompt: GenerateModel):
     return client.chat.completions.create(
-        model="gpt-4-turbo-preview",
-        messages=[{"role": "user", "content": prompt.input}]
+        model="gpt-4-turbo-preview", messages=[{"role": "user", "content": prompt.input}]
     )
+
 
 # @thread:6608f3de036f5763a48d0731
 
