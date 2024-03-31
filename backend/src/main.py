@@ -55,7 +55,13 @@ def make_new_thread(thread: ThreadModel, token: Annotated[str, Depends(oauth2_sc
 def append_thread(
     parent_id: str, thread: SubThreadModel, token: Annotated[str, Depends(oauth2_scheme)]
 ):
-    parent_object_id = ObjectId(parent_id)
+    parent_object_id = None
+    try:
+        parent_object_id = ObjectId(parent_id)
+    except Exception as e:
+        return {"message": "Invalid thread ID"}
+    if parent_object_id is None:
+        return {"message": "Invalid thread ID"}
     parent = thread_collection.find_one({"_id": parent_object_id})
     if thread is None or thread.is_archived:
         return {"message": "Thread not found"}
@@ -72,7 +78,13 @@ def append_thread(
 
 @app.get("/threads/{thread_id}")
 def read_thread(thread_id):
-    object_id = ObjectId(thread_id)
+    object_id = None
+    try:
+        object_id = ObjectId(thread_id)
+    except Exception as e:
+        return {"message": "Invalid thread ID"}
+    if object_id is None:
+        return {"message": "Invalid thread ID"}
     # thread = thread_collection.find_one({"_id": object_id})
     # Make aggregation pipeline to get all deep children given .children array
     threads = thread_collection.aggregate(
@@ -102,7 +114,13 @@ def read_thread(thread_id):
 def patch_thread(
     thread_id: str, content: ThreadPatchModel, token: Annotated[str, Depends(oauth2_scheme)]
 ):
-    object_id = ObjectId(thread_id)
+    object_id = None
+    try:
+        object_id = ObjectId(thread_id)
+    except Exception as e:
+        return {"message": "Invalid thread ID"}
+    if object_id is None:
+        return {"message": "Invalid thread ID"}
     user = None
     try:
         user = get_current_user(token)
@@ -121,7 +139,13 @@ def patch_thread(
 
 @app.delete("/threads/{thread_id}")
 def delete_thread(thread_id: str, token: Annotated[str, Depends(oauth2_scheme)]):
-    object_id = ObjectId(thread_id)
+    object_id = None
+    try:
+        object_id = ObjectId(thread_id)
+    except Exception as e:
+        return {"message": "Invalid thread ID"}
+    if object_id is None:
+        return {"message": "Invalid thread ID"}
     user = None
     try:
         user = get_current_user(token)
@@ -142,7 +166,13 @@ def delete_thread(thread_id: str, token: Annotated[str, Depends(oauth2_scheme)])
 def add_reaction(
     thread_id: str, reaction: ReactionModel, token: Annotated[str, Depends(oauth2_scheme)]
 ):
-    object_id = ObjectId(thread_id)
+    object_id = None
+    try:
+        object_id = ObjectId(thread_id)
+    except Exception as e:
+        return {"message": "Invalid thread ID"}
+    if object_id is None:
+        return {"message": "Invalid thread ID"}
     user = None
     try:
         user = get_current_user(token)
@@ -166,7 +196,13 @@ def add_reaction(
 def remove_reaction(
     thread_id: str, reaction: ReactionModel, token: Annotated[str, Depends(oauth2_scheme)]
 ):
-    object_id = ObjectId(thread_id)
+    object_id = None
+    try:
+        object_id = ObjectId(thread_id)
+    except Exception as e:
+        return {"message": "Invalid thread ID"}
+    if object_id is None:
+        return {"message": "Invalid thread ID"}
     thread = thread_collection.find_one({"_id": object_id})
     user = None
     try:
