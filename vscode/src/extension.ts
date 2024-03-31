@@ -355,7 +355,7 @@ export function activate(context: vscode.ExtensionContext) {
 								),
 							})),
 						})) ?? []),
-					].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+					].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 
 					createdThread.comments = comments
 					state.threads = {
