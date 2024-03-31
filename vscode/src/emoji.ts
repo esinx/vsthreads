@@ -6,6 +6,7 @@ let emojiCodes: Record<string, string>
 export const loadEmojiCodes = async () => {
 	if (!emojiCodes) {
 		const filePath = path.resolve(__dirname, `../assets/emoji-code.json`)
+		// @thread:660968bb7e78da10f3bc1043
 		const data = await fs.readFile(filePath, "utf-8")
 		emojiCodes = JSON.parse(data)
 	}
