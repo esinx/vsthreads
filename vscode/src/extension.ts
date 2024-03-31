@@ -3,7 +3,12 @@ import { parseComments } from "./parser"
 import { State } from "./state"
 import { getAuthSession } from "./auth"
 import { loadLanguageConfig } from "./language-config"
-import { loadEmojiCodes } from "./emoji"
+import {
+	getEmojiCodes,
+	getEmojiImageURL,
+	loadEmojiCodes,
+	searchEmojiCode,
+} from "./emoji"
 import { createAPIClient } from "./api"
 import { getOrigin } from "./git"
 import path from "node:path"
@@ -60,6 +65,32 @@ export function activate(context: vscode.ExtensionContext) {
 	commentController.options = {
 		prompt: "🧵 Leave a reply on this thread",
 	}
+	commentController.reactionHandler = async (element, reaction) => {
+		console.log(reaction)
+		const e = element as vsthread.Thread
+		if (!state.apiClient) {
+			return
+		}
+		const threadId = e.id
+		await state.apiClient.addReaction(threadId, reaction.label)
+		if (element.reactions) {
+			element.reactions = element.reactions.map((r) => {
+				if (r.label === reaction.label) {
+					return {
+						...r,
+						count: r.count + 1,
+						authorHasReacted: true,
+					}
+				}
+				return r
+			})
+		}
+		Object.entries(state.threads).forEach(([, thread]) => {
+			thread.dispose()
+		})
+		state.threads = {}
+		renderComments()
+	}
 	context.subscriptions.push(commentController)
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
@@ -111,7 +142,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		)
 	)
-
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
 			"vsthreads.replyThread",
@@ -241,6 +271,7 @@ export function activate(context: vscode.ExtensionContext) {
 					return
 				}
 				if (typeof state.threads[thread.id] === "undefined") {
+					console.log("reactions", thread.reactions)
 					const createdThread = commentController.createCommentThread(
 						vscode.Uri.file(activeEditor.document.fileName),
 						new vscode.Range(
@@ -265,7 +296,20 @@ export function activate(context: vscode.ExtensionContext) {
 									? "by-user"
 									: "by-others",
 							label: "comment",
-							reactions: [],
+							reactions: [
+								{
+									label: "heart",
+									count: thread.reactions["red_heart"]?.length || 1,
+									authorHasReacted: state.authentication?.account.label
+										? thread.reactions["red_heart"]?.includes(
+												state.authentication.account.label
+										  )
+										: false,
+									iconPath: vscode.Uri.parse(
+										getEmojiImageURL(searchEmojiCode("red_heart")!)
+									),
+								},
+							],
 							timestamp: new Date(thread.created_at * 1000),
 							parent: createdThread,
 							root: true,
@@ -285,6 +329,20 @@ export function activate(context: vscode.ExtensionContext) {
 									: "by-others",
 							label: "comment",
 							parent: createdThread,
+							reactions: [
+								{
+									label: "heart",
+									count: thread.reactions["red_heart"]?.length || 1,
+									authorHasReacted: state.authentication?.account.label
+										? thread.reactions["red_heart"]?.includes(
+												state.authentication.account.label
+										  )
+										: false,
+									iconPath: vscode.Uri.parse(
+										getEmojiImageURL(searchEmojiCode("red_heart")!)
+									),
+								},
+							],
 						})) ?? []),
 					].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 

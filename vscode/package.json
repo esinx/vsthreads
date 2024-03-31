@@ -1,7 +1,7 @@
 {
 	"name": "vsthreads",
 	"displayName": "vsthreads",
-	"description": "Theads but VSCode",
+	"description": "Threads but VSCode",
 	"version": "0.0.1",
 	"engines": {
 		"vscode": "^1.87.0"

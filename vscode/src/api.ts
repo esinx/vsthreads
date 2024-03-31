@@ -6,6 +6,7 @@ type ThreadDTO = {
 	_id: {
 		$oid: string
 	}
+	reactions: Record<string, string[]>
 	author: string
 	profile_picture: string
 	content: string

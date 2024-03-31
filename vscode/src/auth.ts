@@ -8,7 +8,7 @@ export const getAuthSession = async () => {
 		GITHUB_AUTH_PROVIDER_ID,
 		SCOPES,
 		{
-			createIfNone: false,
+			createIfNone: true,
 		}
 	)
 	if (!session) {
