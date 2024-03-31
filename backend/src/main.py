@@ -14,7 +14,7 @@ from mangum import Mangum
 
 from scripts.settings.config import DB_SETTINGS
 from src.auth import get_current_user
-from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchModel
+from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchModel, GenerateModel
 
 app = FastAPI(prefix="/api")
 
@@ -236,10 +236,10 @@ def remove_reaction(
 client = OpenAI()
 
 @app.post("/generate")
-def generate(prompt: str):
+def generate(prompt: GenerateModel):
     return client.chat.completions.create(
         model="gpt-4-turbo-preview",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt.input}]
     )
 
 # @thread:6608f3de036f5763a48d0731

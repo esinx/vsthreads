@@ -32,3 +32,6 @@ class ThreadPatchModel(BaseModel):
 
 class ReactionModel(BaseModel):
     reaction: str = Field(min_length=1)
+
+class GenerateModel(BaseModel):
+    input: str = Field(...)
