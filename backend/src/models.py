@@ -31,4 +31,4 @@ class ThreadPatchModel(BaseModel):
 
 
 class ReactionModel(BaseModel):
-    reaction: str = Field(max_length=1, min_length=1)
+    reaction: str = Field(min_length=1)
