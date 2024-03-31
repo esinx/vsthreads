@@ -168,6 +168,9 @@ def delete_thread(thread_id: str, token: Annotated[str, Depends(oauth2_scheme)])
     return {"_id": str(object_id)}
 
 
+# @thread:6608fcccac2658819b1b5140
+
+
 @app.post("/threads/{thread_id}/reactions")
 def add_reaction(
     thread_id: str, reaction: ReactionModel, token: Annotated[str, Depends(oauth2_scheme)]
