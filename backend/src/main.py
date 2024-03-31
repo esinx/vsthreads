@@ -1,18 +1,27 @@
+import sys
+
+sys.path.append(r"./vendor")
+
 import json
-from typing import List
+from typing import Annotated, List
 
 from bson import ObjectId, json_util
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from fastapi.security import OAuth2PasswordBearer
 from pymongo.mongo_client import MongoClient
+from mangum import Mangum
 
 from scripts.settings.config import DB_SETTINGS
-from src.models import ReactionModel, ThreadModel, ThreadPatchModel
+from src.auth import get_current_user
+from src.models import ReactionModel, SubThreadModel, ThreadModel, ThreadPatchModel
 
 app = FastAPI(prefix="/api")
+
 
 client = MongoClient(DB_SETTINGS["uri"])
 db = client.get_database("vsthreads")
 thread_collection = db.get_collection("threads")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @app.get("/")
@@ -25,12 +34,19 @@ def read_root():
 
 # New thread from comment
 @app.post("/threads")
-def make_new_thread(thread: ThreadModel):
-    user = thread.author
-    # Oauth bs
-    email = "oauth@dummy.com"
-    profile_picture = "https://dummy.com"
+def make_new_thread(thread: ThreadModel, token: Annotated[str, Depends(oauth2_scheme)]):
+    user = None
+    try:
+        user = get_current_user(token)
+    except Exception as e:
+        return {"message": "Invalid token"}
+    if user is None or not user["login"]:
+        return {"message": "Invalid token"}
+    author = user["login"]
+    email = user["email"]
+    profile_picture = user["avatar_url"]
     # set values from oauth call
+    thread.author = author
     thread.email = email
     thread.profile_picture = profile_picture
 
@@ -42,14 +58,19 @@ def make_new_thread(thread: ThreadModel):
 # Two options for param: root thread or latest
 # We do latest since client would have full thread history anyways
 @app.post("/threads/{parent_id}")
-def append_thread(parent_id: str, thread: ThreadModel):
+def append_thread(
+    parent_id: str, thread: SubThreadModel, token: Annotated[str, Depends(oauth2_scheme)]
+):
     parent_object_id = ObjectId(parent_id)
     parent = thread_collection.find_one({"_id": parent_object_id})
-    if thread is None or thread["is_archived"]:
+    if thread is None or thread.is_archived:
         return {"message": "Thread not found"}
-    thread["parent"] = parent_id
-    new_id = make_new_thread(thread)["_id"]
-    print(type(parent["children"]))
+    thread.parent = parent_id
+    thread.repo = parent["repo"]
+    new_thread = make_new_thread(thread, token)
+    if "_id" not in new_thread:
+        return new_thread
+    new_id = new_thread["_id"]
     parent["children"].append(ObjectId(new_id))
     updated_thread = thread_collection.update_one({"_id": parent_object_id}, {"$set": parent})
     return {"_id": str(new_id)}
@@ -84,11 +105,20 @@ def read_thread(thread_id):
 # Patch existing thread
 # Any arbitrary id
 @app.patch("/threads/{thread_id}")
-def patch_thread(thread_id: str, content: ThreadPatchModel):
+def patch_thread(
+    thread_id: str, content: ThreadPatchModel, token: Annotated[str, Depends(oauth2_scheme)]
+):
     object_id = ObjectId(thread_id)
+    user = None
+    try:
+        user = get_current_user(token)
+    except Exception as e:
+        return {"message": "Invalid token"}
     obj = thread_collection.find_one({"_id": object_id})
     if obj is None or obj["is_archived"]:
         return {"message": "Thread not found"}
+    if user is None or user["login"] != obj["author"]:
+        return {"message": "Unauthorized"}
     updated_thread = thread_collection.update_one(
         {"_id": object_id}, {"$set": {"content": content.content}}
     )
@@ -96,25 +126,42 @@ def patch_thread(thread_id: str, content: ThreadPatchModel):
 
 
 @app.delete("/threads/{thread_id}")
-def delete_thread(thread_id: str):
+def delete_thread(thread_id: str, token: Annotated[str, Depends(oauth2_scheme)]):
     object_id = ObjectId(thread_id)
+    user = None
+    try:
+        user = get_current_user(token)
+    except Exception as e:
+        return {"message": "Invalid token"}
     obj = thread_collection.find_one({"_id": object_id})
     if obj is None or obj["is_archived"]:
         return {"message": "Thread not found"}
+    if user is None or user["login"] != obj["author"]:
+        return {"message": "Unauthorized"}
     updated_thread = thread_collection.update_one(
         {"_id": object_id}, {"$set": {"is_archived": True, "content": "[deleted]"}}
     )
+    return {"_id": str(object_id)}
 
 
 @app.post("/threads/{thread_id}/reactions")
-def add_reaction(thread_id: str, reaction: ReactionModel):
+def add_reaction(
+    thread_id: str, reaction: ReactionModel, token: Annotated[str, Depends(oauth2_scheme)]
+):
     object_id = ObjectId(thread_id)
+    user = None
+    try:
+        user = get_current_user(token)
+    except Exception as e:
+        return {"message": "Invalid token"}
+    if user is None or not user["login"]:
+        return {"message": "Invalid token"}
     thread = thread_collection.find_one({"_id": object_id})
     if thread is None or thread["is_archived"]:
         return {"message": "Thread not found"}
     if reaction.reaction not in thread["reactions"]:
         thread["reactions"][reaction.reaction] = []
-    if reaction.user in thread["reactions"][reaction.reaction]:
+    if user["login"] in thread["reactions"][reaction.reaction]:
         return {"message": "Reaction already exists"}
     thread["reactions"][reaction.reaction].append(reaction.user)
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
@@ -122,17 +169,31 @@ def add_reaction(thread_id: str, reaction: ReactionModel):
 
 
 @app.delete("/threads/{thread_id}/reactions")
-def remove_reaction(thread_id: str, reaction: ReactionModel):
+def remove_reaction(
+    thread_id: str, reaction: ReactionModel, token: Annotated[str, Depends(oauth2_scheme)]
+):
     object_id = ObjectId(thread_id)
     thread = thread_collection.find_one({"_id": object_id})
+    user = None
+    try:
+        user = get_current_user(token)
+    except Exception as e:
+        return {"message": "Invalid token"}
+    if user is None or not user["login"]:
+        return {"message": "Invalid token"}
     if thread is None or thread["is_archived"]:
         return {"message": "Thread not found"}
     if reaction.reaction not in thread["reactions"]:
         return {"message": "Reaction does not exist"}
-    if reaction.user not in thread["reactions"][reaction.reaction]:
+    if user["login"] not in thread["reactions"][reaction.reaction]:
         return {"message": "Reaction does not exist"}
-    thread["reactions"][reaction.reaction].remove(reaction.user)
+    thread["reactions"][reaction.reaction].remove(user["login"])
     if len(thread["reactions"][reaction.reaction]) == 0:
         del thread["reactions"][reaction.reaction]
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
+
+handler = Mangum(app, 
+    lifespan="auto",
+    api_gateway_base_path="/",   
+)
