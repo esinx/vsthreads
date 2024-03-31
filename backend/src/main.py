@@ -193,7 +193,7 @@ def add_reaction(
         thread["reactions"][reaction.reaction] = []
     if user["login"] in thread["reactions"][reaction.reaction]:
         return {"message": "Reaction already exists"}
-    thread["reactions"][reaction.reaction].append(reaction.user)
+    thread["reactions"][reaction.reaction].append(user["login"])
     updated_thread = thread_collection.update_one({"_id": object_id}, {"$set": thread})
     return {"_id": str(object_id)}
 
