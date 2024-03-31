@@ -17,6 +17,7 @@ namespace vsthread {
 	export type Thread = {
 		id: string
 		parent: vscode.CommentThread
+		timestamp: Date
 		root?: boolean
 	} & vscode.Comment
 }
@@ -103,6 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
 						)
 					}
 					reply.thread.dispose()
+					renderComments()
 				} catch (e) {
 					console.error(e)
 				}
@@ -123,13 +125,19 @@ export function activate(context: vscode.ExtensionContext) {
 				if (!rootThread) {
 					return
 				}
-				await state.apiClient.createThread(
+				const res = await state.apiClient.createThread(
 					{
 						content: reply.text,
 					},
 					rootThread.id
 				)
 				reply.thread.dispose()
+				state.threads = Object.fromEntries(
+					Object.entries(state.threads).filter(([id]) => id !== rootThread.id)
+				)
+				setTimeout(() => {
+					renderComments()
+				})
 			}
 		)
 	)
@@ -150,18 +158,21 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand(
-			"vsthreads.saveThread",
-			(reply: vscode.CommentReply) => {
-				console.log(`[saveThread]`, reply)
-			}
-		)
-	)
-
-	context.subscriptions.push(
-		vscode.commands.registerCommand(
 			"vsthreads.deleteThread",
-			(reply: vscode.CommentReply) => {
-				console.log(`[deleteThread]`, reply)
+			(reply: vsthread.Thread) => {
+				if (!state.apiClient) {
+					return
+				}
+				state.apiClient.deleteThread(reply.id)
+				reply.parent.comments = (
+					reply.parent.comments as vsthread.Thread[]
+				).filter((t) => t.id !== reply.id)
+
+				state.threads = Object.fromEntries(
+					Object.entries(state.threads).filter(([id]) => id !== reply.id)
+				)
+
+				renderComments()
 			}
 		)
 	)
@@ -215,7 +226,6 @@ export function activate(context: vscode.ExtensionContext) {
 				const threadId = match[1]
 				const res = await apiClient.getThread(threadId)
 				const thread = res[0]
-				console.log(`[getThread]`, thread)
 				return {
 					...c,
 					...thread,
@@ -223,10 +233,6 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			})
 		)
-
-		console.log({
-			commentContent,
-		})
 
 		commentContent
 			.filter((c) => c !== null)
@@ -259,33 +265,29 @@ export function activate(context: vscode.ExtensionContext) {
 									? "by-user"
 									: "by-others",
 							label: "comment",
-							reactions: [
-								// {
-								// 	label: "upvote",
-								// 	count: 1,
-								// 	authorHasReacted: false,
-								// 	iconPath: vscode.Uri.parse(
-								// 		getEmojiImageURL(
-								// 			searchEmojiCode("red_triangle_pointed_up")!
-								// 		)
-								// 	),
-								// },
-								// {
-								// 	label: "downvote",
-								// 	count: 1,
-								// 	authorHasReacted: false,
-								// 	iconPath: vscode.Uri.parse(
-								// 		getEmojiImageURL(
-								// 			searchEmojiCode("red_triangle_pointed_down")!
-								// 		)
-								// 	),
-								// },
-							],
-							timestamp: new Date(),
+							reactions: [],
+							timestamp: new Date(thread.created_at * 1000),
 							parent: createdThread,
 							root: true,
 						},
-					]
+						...(thread.subthreads?.map((subthread) => ({
+							id: subthread._id.$oid,
+							author: {
+								name: subthread.author,
+								iconPath: vscode.Uri.parse(subthread.profile_picture),
+							},
+							body: new vscode.MarkdownString(subthread.content),
+							mode: vscode.CommentMode.Preview,
+							timestamp: new Date(subthread.created_at * 1000),
+							contextValue:
+								subthread.author === state.authentication?.account.label
+									? "by-user"
+									: "by-others",
+							label: "comment",
+							parent: createdThread,
+						})) ?? []),
+					].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+
 					createdThread.comments = comments
 					state.threads = {
 						...state.threads,
@@ -301,6 +303,7 @@ export function activate(context: vscode.ExtensionContext) {
 			)
 		})
 	}
+
 	vscode.workspace.onDidChangeTextDocument(
 		async (event) => renderComments(),
 		null,

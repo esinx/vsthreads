@@ -3,10 +3,13 @@ import fetch from "cross-fetch"
 const API_ROOT = "https://api.vsthreads.tech"
 
 type ThreadDTO = {
-	_id: string
+	_id: {
+		$oid: string
+	}
 	author: string
 	profile_picture: string
 	content: string
+	created_at: number
 	repo?: string
 	subthreads?: ThreadDTO[]
 }
@@ -31,7 +34,7 @@ export const createAPIClient = (args: { accessToken: string }) => {
 		createThread: async (
 			thread: CreateThreadDTO,
 			parentId?: string
-		): Promise<ThreadDTO> => {
+		): Promise<{ _id: string }> => {
 			const url = parentId
 				? `${API_ROOT}/threads/${parentId}`
 				: `${API_ROOT}/threads`
