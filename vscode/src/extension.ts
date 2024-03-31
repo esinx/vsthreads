@@ -227,6 +227,63 @@ export function activate(context: vscode.ExtensionContext) {
 		)
 	)
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			"vsthreads.generate",
+			(reply: vsthread.Thread) => {
+				if (!state.apiClient) {
+					return
+				}
+				var commentsString = ""
+				reply.parent.comments.forEach((comment) => {
+					if (typeof comment.body === "string") {
+						commentsString += comment.body
+					} else if (comment.body instanceof vscode.MarkdownString) {
+						commentsString += comment.body.value
+					}
+				})
+				// Add line numbers to document.getText() (based on \n)
+				var originalText = state.activeEditor?.document.getText()
+				if (originalText === undefined) {
+					return
+				}
+				var lines = originalText?.split("\n")
+				var newLines = []
+
+				for (var i = 0; i < lines.length; i++) {
+					newLines.push(`${i + 1}: ${lines[i]}`)
+				}
+
+				var prompt = 
+					`You are a helpful and smart code assistant. You will be given a section of code to replace with functional, best-practice code based on the comments provided in a thread, as well as the surrounding code.
+
+					Comments:
+
+					${commentsString}
+
+					Code:
+
+					${newLines.join("\n")}
+
+					Replace the code around the following line:
+
+					${reply.parent.range.start.line + 1}
+
+					Please return a JSON with the following format:
+
+					{
+						"start_line": 1,
+						"end_line": 10,
+						"code": "your code here"
+					}
+					`
+				console.log(prompt)
+
+				renderComments()
+			}
+		)
+	)
+
 	commentController.commentingRangeProvider = {
 		// exclude comments from commenting ranges
 		provideCommentingRanges: async (document, token) => {
@@ -321,8 +378,8 @@ export function activate(context: vscode.ExtensionContext) {
 								count: thread.reactions[label]?.length || 0,
 								authorHasReacted: state.authentication?.account.label
 									? thread.reactions[label]?.includes(
-											state.authentication.account.label
-									  )
+										state.authentication.account.label
+									)
 									: false,
 								iconPath: vscode.Uri.parse(
 									getEmojiImageURL(searchEmojiCode(emoji)!)
@@ -352,8 +409,8 @@ export function activate(context: vscode.ExtensionContext) {
 								count: thread.reactions[label]?.length || 0,
 								authorHasReacted: state.authentication?.account.label
 									? thread.reactions[label]?.includes(
-											state.authentication.account.label
-									  )
+										state.authentication.account.label
+									)
 									: false,
 								iconPath: vscode.Uri.parse(
 									getEmojiImageURL(searchEmojiCode(emoji)!)
