@@ -2,7 +2,7 @@
 	"name": "vsthreads",
 	"displayName": "vsthreads",
 	"description": "Threads but VSCode",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"engines": {
 		"vscode": "^1.87.0"
 	},
