@@ -299,12 +299,8 @@ export function activate(context: vscode.ExtensionContext) {
 							reactions: [
 								{
 									label: "heart",
-									count: thread.reactions["red_heart"]?.length || 1,
-									authorHasReacted: state.authentication?.account.label
-										? thread.reactions["red_heart"]?.includes(
-												state.authentication.account.label
-										  )
-										: false,
+									count: (thread.reactions["heart"]?.length ?? 0) + 1,
+									authorHasReacted: false,
 									iconPath: vscode.Uri.parse(
 										getEmojiImageURL(searchEmojiCode("red_heart")!)
 									),
