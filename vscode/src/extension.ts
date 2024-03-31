@@ -344,9 +344,9 @@ export function activate(context: vscode.ExtensionContext) {
 							parent: createdThread,
 							reactions: REACTIONS.map(([label, emoji]) => ({
 								label,
-								count: thread.reactions[label]?.length || 0,
+								count: subthread.reactions[label]?.length || 0,
 								authorHasReacted: state.authentication?.account.label
-									? thread.reactions[label]?.includes(
+									? subthread.reactions[label]?.includes(
 											state.authentication.account.label
 									  )
 									: false,
