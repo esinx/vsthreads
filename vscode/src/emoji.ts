@@ -13,6 +13,7 @@ export const loadEmojiCodes = async () => {
 	return emojiCodes
 }
 
+// @thread:66096a1801139a3d4620932d
 export const getEmojiCodes = () => {
 	if (!emojiCodes) {
 		throw new Error("Emoji codes not loaded")
