@@ -15,6 +15,7 @@ isort==5.13.2
 mangum==0.17.0
 mccabe==0.7.0
 mypy-extensions==1.0.0
+openai==1.14.3
 packaging==24.0
 pathspec==0.12.1
 platformdirs==4.2.0
