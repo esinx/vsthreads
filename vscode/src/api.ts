@@ -1,9 +1,11 @@
 import fetch from "cross-fetch"
 
-const API_ROOT = "http://localhost:8000/"
+const API_ROOT = "https://api.vsthreads.tech"
 
 type ThreadDTO = {
 	_id: string
+	author: string
+	profile_picture: string
 	content: string
 	repo?: string
 	subthreads?: ThreadDTO[]
@@ -14,7 +16,7 @@ type CreateThreadDTO = Pick<ThreadDTO, "content" | "repo">
 export const createAPIClient = (args: { accessToken: string }) => {
 	let { accessToken } = args
 	return {
-		getThread: async (id: string) => {
+		getThread: async (id: string): Promise<ThreadDTO[]> => {
 			const response = await fetch(`${API_ROOT}/threads/${id}`, {
 				headers: {
 					"Content-Type": "application/json",
@@ -42,6 +44,8 @@ export const createAPIClient = (args: { accessToken: string }) => {
 				body: JSON.stringify(thread),
 			})
 			if (!response.ok) {
+				debugger
+				console.error(response)
 				throw new Error("Failed to create thread")
 			}
 			return response.json()
@@ -59,6 +63,7 @@ export const createAPIClient = (args: { accessToken: string }) => {
 				body: JSON.stringify(reply),
 			})
 			if (!response.ok) {
+				console.error(response)
 				throw new Error("Failed to edit thread")
 			}
 			return response.json()
@@ -72,6 +77,7 @@ export const createAPIClient = (args: { accessToken: string }) => {
 				},
 			})
 			if (!response.ok) {
+				console.error(response)
 				throw new Error("Failed to delete thread")
 			}
 			return response.json()
@@ -106,6 +112,7 @@ export const createAPIClient = (args: { accessToken: string }) => {
 				}
 			)
 			if (!response.ok) {
+				console.error(response)
 				throw new Error("Failed to remove reaction")
 			}
 			return response.json()

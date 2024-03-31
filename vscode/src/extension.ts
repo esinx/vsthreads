@@ -6,6 +6,7 @@ import { loadLanguageConfig } from "./language-config"
 import { getEmojiImageURL, loadEmojiCodes, searchEmojiCode } from "./emoji"
 import { createAPIClient } from "./api"
 import { getOrigin } from "./git"
+import path from "node:path"
 
 let state: State = {
 	threads: {},
@@ -44,6 +45,10 @@ const authenticate = async () => {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+	state = {
+		...state,
+		activeEditor: vscode.window.activeTextEditor,
+	}
 	if (!state.activeEditor) {
 		return
 	}
@@ -59,41 +64,48 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand(
 			"vsthreads.createThread",
 			async (reply: vscode.CommentReply) => {
-				if (!state.activeEditor || !state.apiClient) {
-					return
-				}
-				const origin = await getOrigin(state.activeEditor.document.uri.fsPath)
-				const { _id: threadId } = await state.apiClient.createThread({
-					repo: state.activeEditor.document.uri.toString(),
-					content: origin,
-				})
-				const languageConfig = await getLanguageConfig(
-					state.activeEditor.document.languageId
-				)
-				if (typeof languageConfig.comments?.lineComment !== "undefined") {
-					const lineComment = languageConfig.comments.lineComment
-					await state.activeEditor.edit((editBuilder) => {
-						editBuilder.insert(
-							new vscode.Position(reply.thread.range.start.line, 0),
-							`${lineComment} @thread:${threadId}\n`
-						)
-					})
-				} else if (
-					typeof languageConfig.comments?.blockComment !== "undefined"
-				) {
-					const [start, end] = languageConfig.comments.blockComment
-					await state.activeEditor.edit((editBuilder) => {
-						editBuilder.insert(
-							new vscode.Position(reply.thread.range.start.line, 0),
-							`${start} @thread:${threadId} ${end}\n`
-						)
-					})
-				} else {
-					await vscode.window.showErrorMessage(
-						"Language does not support comments"
+				try {
+					if (!state.activeEditor || !state.apiClient) {
+						return
+					}
+					const origin = await getOrigin(
+						path.dirname(state.activeEditor.document.uri.fsPath)
 					)
+					const { _id: threadId } = await state.apiClient.createThread({
+						repo: origin,
+						content: reply.text,
+					})
+					console.log(`[createThread]`, threadId)
+					const languageConfig = await getLanguageConfig(
+						state.activeEditor.document.languageId
+					)
+					if (typeof languageConfig.comments?.lineComment !== "undefined") {
+						const lineComment = languageConfig.comments.lineComment
+						await state.activeEditor.edit((editBuilder) => {
+							editBuilder.insert(
+								new vscode.Position(reply.thread.range.start.line, 0),
+								`${lineComment} @thread:${threadId}\n`
+							)
+						})
+					} else if (
+						typeof languageConfig.comments?.blockComment !== "undefined"
+					) {
+						const [start, end] = languageConfig.comments.blockComment
+						await state.activeEditor.edit((editBuilder) => {
+							editBuilder.insert(
+								new vscode.Position(reply.thread.range.start.line, 0),
+								`${start} @thread:${threadId} ${end}\n`
+							)
+						})
+					} else {
+						await vscode.window.showErrorMessage(
+							"Language does not support comments"
+						)
+					}
+					reply.thread.dispose()
+				} catch (e) {
+					console.error(e)
 				}
-				reply.thread.dispose()
 			}
 		)
 	)
@@ -180,10 +192,11 @@ export function activate(context: vscode.ExtensionContext) {
 	} satisfies vscode.CommentingRangeProvider
 
 	const renderComments = async () => {
-		if (!state.activeEditor) {
+		if (!state.activeEditor || !state.apiClient) {
 			return
 		}
 		const activeEditor = state.activeEditor
+		const apiClient = state.apiClient
 		await loadEmojiCodes()
 		const languageConfig = await getLanguageConfig(
 			activeEditor.document.languageId
@@ -192,64 +205,95 @@ export function activate(context: vscode.ExtensionContext) {
 		const commentParser = parseComments(languageConfig)
 		const comments = commentParser(editorText)
 		const removedThreads = new Set(Object.keys(state.threads))
-		comments.forEach((comment) => {
-			const match = comment.content.match(/@thread:(.+)/)
-			if (!match) {
-				return
-			}
-			const threadId = match[1]
-			if (typeof state.threads[threadId] === "undefined") {
-				const thread = commentController.createCommentThread(
-					vscode.Uri.file(activeEditor.document.fileName),
-					new vscode.Range(
-						comment.range.start.line,
-						0,
-						comment.range.start.line,
-						0
-					),
-					[]
-				)
-				const comments: vsthread.Thread[] = [
-					{
-						id: threadId,
-						author: { name: "vscode" },
-						body: new vscode.MarkdownString(comment.content),
-						mode: vscode.CommentMode.Preview,
-						contextValue: "by-user",
-						label: "comment",
-						reactions: [
-							{
-								label: "upvote",
-								count: 1,
-								authorHasReacted: false,
-								iconPath: vscode.Uri.parse(
-									getEmojiImageURL(searchEmojiCode("red_triangle_pointed_up")!)
-								),
-							},
-							{
-								label: "downvote",
-								count: 1,
-								authorHasReacted: false,
-								iconPath: vscode.Uri.parse(
-									getEmojiImageURL(
-										searchEmojiCode("red_triangle_pointed_down")!
-									)
-								),
-							},
-						],
-						timestamp: new Date(),
-						parent: thread,
-						root: true,
-					},
-				]
-				thread.comments = comments
-				state.threads = {
-					...state.threads,
-					[threadId]: thread,
+
+		const commentContent = await Promise.all(
+			comments.map(async (c) => {
+				const match = c.content.match(/@thread:(.+)/)
+				if (!match) {
+					return null
 				}
-			}
-			removedThreads.delete(threadId)
+				const threadId = match[1]
+				const res = await apiClient.getThread(threadId)
+				const thread = res[0]
+				console.log(`[getThread]`, thread)
+				return {
+					...c,
+					...thread,
+					id: threadId,
+				}
+			})
+		)
+
+		console.log({
+			commentContent,
 		})
+
+		commentContent
+			.filter((c) => c !== null)
+			.forEach((thread) => {
+				if (!thread) {
+					return
+				}
+				if (typeof state.threads[thread.id] === "undefined") {
+					const createdThread = commentController.createCommentThread(
+						vscode.Uri.file(activeEditor.document.fileName),
+						new vscode.Range(
+							thread.range.start.line,
+							0,
+							thread.range.start.line,
+							0
+						),
+						[]
+					)
+					const comments: vsthread.Thread[] = [
+						{
+							id: thread.id,
+							author: {
+								name: thread.author,
+								iconPath: vscode.Uri.parse(thread.profile_picture),
+							},
+							body: new vscode.MarkdownString(thread.content),
+							mode: vscode.CommentMode.Preview,
+							contextValue:
+								thread.author === state.authentication?.account.label
+									? "by-user"
+									: "by-others",
+							label: "comment",
+							reactions: [
+								// {
+								// 	label: "upvote",
+								// 	count: 1,
+								// 	authorHasReacted: false,
+								// 	iconPath: vscode.Uri.parse(
+								// 		getEmojiImageURL(
+								// 			searchEmojiCode("red_triangle_pointed_up")!
+								// 		)
+								// 	),
+								// },
+								// {
+								// 	label: "downvote",
+								// 	count: 1,
+								// 	authorHasReacted: false,
+								// 	iconPath: vscode.Uri.parse(
+								// 		getEmojiImageURL(
+								// 			searchEmojiCode("red_triangle_pointed_down")!
+								// 		)
+								// 	),
+								// },
+							],
+							timestamp: new Date(),
+							parent: createdThread,
+							root: true,
+						},
+					]
+					createdThread.comments = comments
+					state.threads = {
+						...state.threads,
+						[thread.id]: createdThread,
+					}
+				}
+				removedThreads.delete(thread.id)
+			})
 		removedThreads.forEach((threadId) => {
 			state.threads[threadId].dispose()
 			state.threads = Object.fromEntries(
