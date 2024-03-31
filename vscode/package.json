@@ -37,6 +37,10 @@
 			{
 				"command": "vsthreads.saveThread",
 				"title": "Save Thread"
+			},
+			{
+				"command": "vsthreads.generate",
+				"title": "Generate (AI)"
 			}
 		],
 		"menus": {
@@ -63,6 +67,11 @@
 					"command": "vsthreads.deleteThread",
 					"group": "group@2",
 					"when": "commentController == vsthreads && comment == by-user"
+				},
+				{
+					"command": "vsthreads.generate",
+					"group": "group@2",
+					"when": "commentController == vsthreads"
 				}
 			]
 		}
