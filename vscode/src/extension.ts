@@ -286,7 +286,7 @@ export function activate(context: vscode.ExtensionContext) {
 							label: "comment",
 							parent: createdThread,
 						})) ?? []),
-					].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+					].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 
 					createdThread.comments = comments
 					state.threads = {
